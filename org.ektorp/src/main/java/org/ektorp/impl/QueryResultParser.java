@@ -51,26 +51,28 @@ public class QueryResultParser<T> {
 	public void parseResult(InputStream json) throws JsonParseException, IOException {
 		JsonParser jp = mapper.getJsonFactory().createJsonParser(json);
 		
-		if (jp.nextToken() != JsonToken.START_OBJECT) {
-			throw new RuntimeException("Expected data to start with an Object");
+		JsonToken startToken = jp.nextToken();
+		if (startToken != JsonToken.START_OBJECT && startToken != JsonToken.START_ARRAY) {
+			throw new RuntimeException("Expected data to start with an Object or Array");			
 		}
+		
+		if (startToken == JsonToken.START_OBJECT) {
+			Map<String, String> fields = readHeaderFields(jp);
+			assertNoErrors(fields);
 
-		Map<String, String> fields = readHeaderFields(jp);
-		assertNoErrors(fields);
-
-		if (fields.containsKey(OFFSET_FIELD_NAME)) {
-			offset = Integer.parseInt(fields.get(OFFSET_FIELD_NAME));
-		}
-		if (fields.containsKey(TOTAL_ROWS_FIELD_NAME)) {
-			totalRows = Integer.parseInt(fields.get(TOTAL_ROWS_FIELD_NAME));
-			if (totalRows == 0) {
-				rows = Collections.emptyList();
-				return;
+			if (fields.containsKey(OFFSET_FIELD_NAME)) {
+				offset = Integer.parseInt(fields.get(OFFSET_FIELD_NAME));
+			}
+			if (fields.containsKey(TOTAL_ROWS_FIELD_NAME)) {
+				totalRows = Integer.parseInt(fields.get(TOTAL_ROWS_FIELD_NAME));
+				if (totalRows == 0) {
+					rows = Collections.emptyList();
+					return;
+				}
 			}
 		}
 		
 		rows = new ArrayList<T>();
-
 		ParseState state = new ParseState();
 
 		T first = parseFirstRow(jp, state);
@@ -78,7 +80,7 @@ public class QueryResultParser<T> {
 			rows = Collections.emptyList();
 		} else {
 			rows.add(first);
-		}
+		}			
 
 		while (jp.getCurrentToken() != null) {
 			skipToField(jp, state.docFieldName, state);
@@ -90,6 +92,8 @@ public class QueryResultParser<T> {
 			rows.add(jp.readValueAs(type));
 			endRow(jp, state);
 		}
+		
+		totalRows = rows.size();
 	}
 	
 	public int getTotalRows() {

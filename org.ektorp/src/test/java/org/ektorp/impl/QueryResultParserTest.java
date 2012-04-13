@@ -43,6 +43,15 @@ public class QueryResultParserTest {
 		assertEquals(1, result.size());
 		assertEquals("doc_id1", result.get(0).getId());
 	}
+
+	@Test
+	public void test_headerless_array_result() throws Exception {
+		parser.parseResult(loadData("view_result_no_header.json"));
+		List<TestDoc> result = parser.getRows();
+		assertEquals(2, result.size());
+		assertEquals("doc_id1", result.get(0).getId());
+		assertEquals("doc_id2", result.get(1).getId());
+	}
 	
 	@Test
 	public void test_empty_result_from_reduced_view() throws Exception {
